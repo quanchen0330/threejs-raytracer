@@ -1,0 +1,40 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+	<title>CS315 Final Project - Ray Tracer</title>
+	<script type="text/javascript" src="js/jquery-1.11.1.min.js"></script>
+	<script type="text/javascript" src="js/three.min.js"></script>
+	<script type="text/javascript" src="js/utils.js"></script>
+	<script type="text/javascript" src="raytracer.js"></script>
+</head>
+<body>
+	<div class="canvas">
+		<canvas id="canvas" width="512"  height="512" style="border: 1 solid black">
+			If you see this, your browser doesn't support HTML5 canvas elements!
+		</canvas>
+	</div>
+	<div>
+		<p>
+			Scene: <code>assets/</code>
+	<!--		<input type="text" id="scene_file_input"> -->
+			<select id="scene_file_input">
+				<option value="DepthTest2">DepthTest2</option>
+				<option value="DepthTest1">DepthTest1</option>
+				<option value="ShadowTest1">ShadowTest1</option>
+				<option value="ShadowTest2">ShadowTest2</option>
+				<option value="CornellBox">CornellBox</option>
+			</select>
+			<code>.json</code>
+			<span style="padding-left:1em">&nbsp;</span>
+			<input type="checkbox" value="checked" id="antialiasing">Antialiasing</input>
+			<input type="checkbox" value="checked" id="soft_shadows">Soft shadows</input>
+			<input type="checkbox" value="checked" id="depth_of_field">Depth of field</input>
+			<button id="load_scene_button">Load Scene</button>
+		</p>
+	<div>
+	<div>
+		<p id="log"></p>
+	</div>
+
+</body>
+</html>

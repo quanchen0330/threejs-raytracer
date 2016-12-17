@@ -1,0 +1,107 @@
+{
+	"camera" : {
+		"eye" : [0.0, 0.0, 0.0],
+		"up" : [0.0, 1.0, 0.0],
+		"at" : [0.0, 0.0, -1.0],
+		"fovy" : 45, "aspect" : 1
+	},
+	"bounce_depth" : 0,
+	"shadow_bias" : 0.0001,
+  "focal_depth" : 3,
+
+	"lights" : [
+		{"source" : "Ambient", "color" : [0.1,0.1,0.1]},
+		{"source" : "Point", "position" : [2, 2, -1], "color" : [1,1,1]}
+	],
+
+
+	"materials" : [
+		{
+			"ka" : [0,0,1],
+			"kd" : [0,0,1],
+			"ks" : [1,1,1],
+			"shininess" : 40,
+			"kr" : [0,0,0]
+		},
+		{
+			"ka" : [1,0,0],
+			"kd" : [1,0,0],
+			"ks" : [1,1,1],
+			"shininess" : 40,
+			"kr" : [0,0,0]
+		},
+		{
+			"ka" : [1,1,1],
+			"kd" : [1,1,1],
+			"ks" : [0,0,0],
+			"shininess" : 0,
+			"kr" : [0,0,0]
+		},
+		{
+			"ka" : [0,1,0],
+			"kd" : [0,1,0],
+			"ks" : [1,1,1],
+			"shininess" : 40,
+			"kr" : [0,0,0]
+		}
+	],
+
+	"surfaces" : [
+    {
+			"shape" : "Sphere",
+			"center" : [0.7, 0.5, -7.8],
+			"radius" : 0.25,
+			"material" : 3
+		},
+
+
+		{
+			"shape" : "Sphere",
+			"center" : [0.7, 0.5, -6.8],
+			"radius" : 0.25,
+			"material" : 0
+		}
+    ,
+    {
+			"shape" : "Sphere",
+			"center" : [0.7, 0.5, -5.8],
+			"radius" : 0.25,
+			"material" : 1
+		},
+    {
+			"shape" : "Sphere",
+			"center" : [0.7, 0.5, -4.8],
+			"radius" : 0.25,
+			"material" : 2
+		},
+    {
+      "shape" : "Sphere",
+      "center" : [0.7, 0.5, -3.8],
+      "radius" : 0.25,
+      "material" : 3
+    },
+    {
+      "shape" : "Sphere",
+      "center" : [0.7, 0.5, -2.8],
+      "radius" : 0.25,
+      "material" : 0
+    },
+    {
+      "shape" : "Sphere",
+      "center" : [0.7, 0.5, -1.8],
+      "radius" : 0.25,
+      "material" : 1
+    },
+
+    {
+      "shape" : "Triangle",
+      "p1" : [-1,-1,-1],
+      "p2" : [0, 1, -15],
+      "p3" : [1,-1,-1],
+      "material" : 2
+    }
+
+
+
+	]
+}
