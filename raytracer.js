@@ -1,16 +1,21 @@
 "use strict";
 
 /**
- * RAYTRACER v1.1
+ * RAYTRACER
  * @author Sam Burdick
  * (Starter code by Tony Mullen)
  */
 
-// TODO:
+// TODO: (in no particular order)
 /**
- * Depth of field, soft shadows, antialiasing complete.
+ * Documentation
  * Matrix Transformations are a work in progress: TODO: lighting (possibly due to normals) incorrect
  * Lighting: allow for multiple light sources
+ * File entry: parse every .json file in assets at boot, keep scene handy for loading at runtime, then allow user
+ * to save images
+ * Create scene files on the fly: position shapes into the scene, etc.
+ *  better: write a python script or something to convert an obj file to our proprietary format,
+ *  or modify our program here to parse different file formats if possible
  */
 
 //CORE VARIABLES
@@ -35,7 +40,7 @@ function init() {
   imageBuffer = context.createImageData(canvas.width, canvas.height); //buffer for pixels
   loadSceneFile("assets/DepthTest2.json");
 }
-var pointLight, ambientLight, directionalLight;
+var pointLight, ambientLight, directionalLight; // TODO: have set of "light" objects read individually, allowing multiple light sources
 //loads and "parses" the scene file at the given path
 function loadSceneFile(filepath) {
   scene = Utils.loadJSON(filepath); //load the scene
@@ -67,13 +72,13 @@ function loadSceneFile(filepath) {
     }
   }
   sceneDepth = scene.focal_depth;
-  render(); //render the scene
+  render();
 }
 
 var Camera = function(eye, at, up, fovy, aspect){
-  this.eye      = arrayToVector3(eye);//new THREE.Vector3(eye[0], eye[1], eye[2]);
-  this.at       = arrayToVector3(at);//new THREE.Vector3(at[0], at[1], at[2]);
-  this.up       = arrayToVector3(up);//new THREE.Vector3(up[0], up[1], up[2]);
+  this.eye      = arrayToVector3(eye);
+  this.at       = arrayToVector3(at);
+  this.up       = arrayToVector3(up);
 
   //wVec points backwards from the camera
   this.wVec     = new THREE.Vector3().subVectors(this.eye, this.at).normalize();
@@ -96,8 +101,10 @@ var Camera = function(eye, at, up, fovy, aspect){
   this.pixelWidth   = this.cameraWidth / (canvas.width - 1);
 };
 
+// parallelogram representation of light source area
 var aEdge = new THREE.Vector3(0.10,0,0);
 var bEdge = new THREE.Vector3(0,0.10,0);
+// number of times we perturb the eye vector for per-pixel depth of field calculation
 var numEyeVec = 5;
 
 Camera.prototype.castRay = function(x, y){
@@ -117,14 +124,14 @@ Camera.prototype.castRay = function(x, y){
                   this.wVec.clone().multiplyScalar(-1))
   };
 
-  // depth of field color implementation:
+  // depth of field implementation:
   // perturb eye vector randomly, (taking 4 points) take average color of the result creating a focal effect
   if(depthOfField && sceneDepth != undefined) {
     var finalColor = [0,0,0];
     for(var i = 0; i < numEyeVec; i++) {
       var randA = aEdge.clone().multiplyScalar(Math.random()-0.5);
       var randB = bEdge.clone().multiplyScalar(Math.random()-0.5);
-      var sampleVec = { // increse range of random ness,
+      var sampleVec = {
         origin: ray.origin.clone().add(randA).add(randB),
         direction: ray.direction.clone().multiplyScalar(sceneDepth).sub(randA).sub(randB).normalize()
       }
@@ -138,24 +145,30 @@ Camera.prototype.castRay = function(x, y){
   return trace(ray,0,undefined)
 };
 
-var colorStackEntry = function(color, t) {
-  this.color = color;
-  this.t = t;
+
+var frontmostColor = {
+  color: BACKGROUND,
+  t:     Infinity
 }
 
+var N, L, D, R, S, frontmostColor, t, transMatrix, surface, ambComp, diffComp, specComp;
+
+/**
+ * recursive function for computing the color result of the given ray.
+ * @param ray to be used to meet nearest surfaces
+ * @param bounce number used for recursive depth
+ * @param bounceSurface the previous surface we bounced from
+ */
 function trace(ray, bounce, bounceSurface) {
   // for each surface, if it's a sphere or triangle, do appropriate intersection
   // return color of the material of struck surface (one with lowest t value)
-
-  var N, L, D, R, S, diffComp, specComp, ambComp;
-  var frontmostColor = new colorStackEntry(BACKGROUND,Infinity);
-
+  frontmostColor.color = BACKGROUND;
+  frontmostColor.t = Infinity;
   for(var surfIndex = 0; surfIndex < surfaces.length; surfIndex++) {
     var surface = surfaces[surfIndex];
     // multiply by surface's transformation matrix, if it has no transforms it's the identity matrix.
     // take inverse of M, then multiply M^-1 by origin and direction to determine intersect ray.
-    var t;
-    var transMatrix = new THREE.Matrix4().identity();
+    transMatrix = new THREE.Matrix4().identity();
     if(surface.transforms != undefined) {
       var intersectRay = {
         origin : ray.origin.clone(),
@@ -164,20 +177,17 @@ function trace(ray, bounce, bounceSurface) {
       transMatrix = surface.transformationMatrix.clone();
       transMatrix = transMatrix.getInverse(transMatrix);
       // origin = M^-1 * origin, same for direction
+      // TODO: transformed shape looks ok, but light is not being computed properly
       intersectRay.origin.applyMatrix4(transMatrix);
       intersectRay.direction.applyMatrix4(transMatrix);
-
       t = surface.intersects(intersectRay);
-      if(DEBUG) console.log(t)
-    //  ray = intersectRay;
-      // take transpose of tr
     } else {
       t = surface.intersects(ray);
     }
 
     if(t && frontmostColor.t > t && surface != bounceSurface ) {
       // diffuse component
-      if(t<0)t= Math.abs(t)
+      if(t < 0)t= Math.abs(t)
       if(bounce > 0) t = Math.abs(t); // needed for raytracing component for mysterious reasons
       var dir = ray.direction.clone().multiplyScalar(t) //TODO: may need to normalize this before multiplying? (experiment!)
       var approachVec = new THREE.Vector3().addVectors(ray.origin, dir );
@@ -190,11 +200,10 @@ function trace(ray, bounce, bounceSurface) {
       } else if (surface instanceof Triangle) {
           N = surface.normal;
       }
-      //if(DEBUG) console.log(t)
+
       // if surface is reflective we return the bounce result
       if(surface.mat.kr != undefined && surface.mat.kr[0] != 0 && surface.mat.kr[1] != 0
         && surface.mat.kr[2] != 0 && bounce < scene.bounce_depth) {
-
         var v = dir.clone().normalize().multiplyScalar(-1);
         var nv = N.dot(v) * 2;
         var ref = (new THREE.Vector3()).subVectors( N.clone().multiplyScalar(nv) , v ).normalize();
@@ -206,6 +215,7 @@ function trace(ray, bounce, bounceSurface) {
 
         var rec =  trace(ray, bounce + 1, surface);
 
+        if(DEBUG) console.log(rec)
         for(var i = 0; i < rec.length; i++) {
           rec[i] *= surface.mat.kr[i];
         }
@@ -272,7 +282,7 @@ function trace(ray, bounce, bounceSurface) {
       var ka = surface.mat.ka;
       var ks = surface.mat.ks;
       var amb = ambientLight.color;
-      ambComp = [ ka[0] * amb[0], ka[1] * amb[1], ka[2] *  amb[2] ]
+      ambComp = [ ka[0] * amb[0], ka[1] * amb[1], ka[2] *  amb[2] ];
       specComp = [ ks[0] * S, ks[1] * S, ks[2] * S ];
       diffComp = [ kd[0] * D, kd[1] * D, kd[2] * D ];
       var finalColor = [];
@@ -288,7 +298,8 @@ function trace(ray, bounce, bounceSurface) {
           finalColor[i] *= shadeAmount;
         }
       }
-      frontmostColor = new colorStackEntry(finalColor, t);
+      frontmostColor.color = finalColor;
+      frontmostColor.t = t;
     }
   }
   return frontmostColor.color;
@@ -325,8 +336,7 @@ var Surface = function(mat, objname, transforms){
       .multiply(this.rotateX)
       .multiply(this.rotateY)
       .multiply(this.rotateZ)
-      .multiply(this.scale)
-      ;
+      .multiply(this.scale);
   }
 };
 
@@ -385,7 +395,7 @@ Triangle.prototype.intersects = function(ray){
   var grad = n.dot(ray.direction);
   if(grad >= 0) return false;
   var d = n.dot(p0);
-  var t = d  - n.dot(ray.origin);
+  var t = d - n.dot(ray.origin);
   if(t > 0 ) return false;
   // now we know that it intersects the plane, but does it intersect the triangle.
   t /= grad  ;
@@ -413,7 +423,6 @@ Triangle.prototype.intersects = function(ray){
 
 
 };
-//renders the scene
 
 // requisite regular sampling variables
 var c = new THREE.Vector3(); // color determined by surroundings
@@ -449,7 +458,6 @@ function render() {
   console.log("rendered in: "+(end-start)+"ms");
 }
 
-//sets the pixel at the given x,y to the given color
 /**
  * Sets the pixel at the given screen coordinates to the given color
  * @param {int} x     The x-coordinate of the pixel
@@ -478,9 +486,8 @@ function arrayToVector3(arr){
 $(document).ready(function(){
   init();
   render();
-  //load and render new scene
+  //load and render new scene, applying modification variables
   $('#load_scene_button').click(function(){
-    // reset add-on variables
     antialiasing = false;
     softShadows = false;
     depthOfField = false;
@@ -493,8 +500,6 @@ $(document).ready(function(){
     if(document.getElementById('depth_of_field').checked) {
       depthOfField = true;
     }
-
-  //  console.log($(': form input : checkbox'));
     var filepath = 'assets/'+$('#scene_file_input').val()+'.json';
     loadSceneFile(filepath);
   });
