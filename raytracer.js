@@ -6,11 +6,11 @@
  * (Starter code by Tony Mullen)
  */
 
+// TODO:
 /**
- * FINAL PROJECT:
  * Depth of field, soft shadows, antialiasing complete.
  * Matrix Transformations are a work in progress: TODO: lighting (possibly due to normals) incorrect
- *
+ * Lighting: allow for multiple light sources
  */
 
 //CORE VARIABLES
@@ -18,7 +18,7 @@ var canvas, context, imageBuffer;
 
 var DEBUG = false; //whether to show debug messages
 var EPSILON = 0.00001; //error margins
-var BACKGROUND = [0,0,0];
+var BACKGROUND = [0,0,0]; //background color
 
 // user can toggle these via checkboxes in the browser page
 var antialiasing = false;
@@ -71,9 +71,9 @@ function loadSceneFile(filepath) {
 }
 
 var Camera = function(eye, at, up, fovy, aspect){
-  this.eye      = new THREE.Vector3(eye[0], eye[1], eye[2]);
-  this.at       = new THREE.Vector3(at[0], at[1], at[2]);
-  this.up       = new THREE.Vector3(up[0], up[1], up[2]);
+  this.eye      = arrayToVector3(eye);//new THREE.Vector3(eye[0], eye[1], eye[2]);
+  this.at       = arrayToVector3(at);//new THREE.Vector3(at[0], at[1], at[2]);
+  this.up       = arrayToVector3(up);//new THREE.Vector3(up[0], up[1], up[2]);
 
   //wVec points backwards from the camera
   this.wVec     = new THREE.Vector3().subVectors(this.eye, this.at).normalize();
@@ -190,7 +190,7 @@ function trace(ray, bounce, bounceSurface) {
       } else if (surface instanceof Triangle) {
           N = surface.normal;
       }
-      if(DEBUG) console.log(t)
+      //if(DEBUG) console.log(t)
       // if surface is reflective we return the bounce result
       if(surface.mat.kr != undefined && surface.mat.kr[0] != 0 && surface.mat.kr[1] != 0
         && surface.mat.kr[2] != 0 && bounce < scene.bounce_depth) {
@@ -360,9 +360,9 @@ Sphere.prototype.intersects = function(ray){
 
 var Triangle = function(mat, p1, p2, p3, objname, transforms){
   Surface.call(this, mat, objname, transforms);
-  this.p1 = new THREE.Vector3(p1[0],p1[1],p1[2]);
-  this.p2 = new THREE.Vector3(p2[0],p2[1],p2[2]);
-  this.p3 = new THREE.Vector3(p3[0],p3[1],p3[2]);
+  this.p1 = arrayToVector3(p1);
+  this.p2 = arrayToVector3(p2);
+  this.p3 = arrayToVector3(p3);
   this.e1 = (new THREE.Vector3()).subVectors(this.p1,this.p2);
   this.e2 = (new THREE.Vector3()).subVectors(this.p3,this.p1);
   this.e3 = (new THREE.Vector3()).subVectors(this.p2,this.p3);
@@ -467,6 +467,11 @@ function setPixel(x, y, color){
 //converts degrees to radians
 function rad(degrees){
   return degrees*Math.PI/180;
+}
+
+//converts an array to a THREE.Vector3
+function arrayToVector3(arr){
+  return new THREE.Vector3(arr[0],arr[1],arr[2]);
 }
 
 //on document load, run the application
