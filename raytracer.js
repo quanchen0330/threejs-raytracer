@@ -9,13 +9,12 @@
 // TODO: (in no particular order)
 /**
  * Documentation
- * Matrix Transformations are a work in progress: TODO: lighting (possibly due to normals) incorrect
+ * Matrix Transformations are a work in progress: lighting (possibly due to normals) incorrect
  * Lighting: allow for multiple light sources
  * File entry: parse every .json file in assets at boot, keep scene handy for loading at runtime, then allow user
- * to save images
+  to save images
  * Create scene files on the fly: position shapes into the scene, etc.
- *  better: write a python script or something to convert an obj file to our proprietary format,
- *  or modify our program here to parse different file formats if possible
+  better: write a python script or something to convert an obj file (e.g, blender export) to our proprietary format, or modify our program here to parse different file formats if possible
  */
 
 //CORE VARIABLES
