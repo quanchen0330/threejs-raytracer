@@ -9,6 +9,7 @@
 // TODO: (in no particular order)
 /**
  * Documentation
+ * Depth slider
  * Matrix Transformations are a work in progress: lighting (possibly due to normals) incorrect
  * Lighting: allow for multiple light sources
  * File entry: parse every .json file in assets at boot, keep scene handy for loading at runtime, then allow user
@@ -155,7 +156,7 @@ var N, L, D, R, S, frontmostColor, t, transMatrix, surface, ambComp, diffComp, s
 /**
  * recursive function for computing the color result of the given ray.
  * @param ray to be used to meet nearest surfaces
- * @param bounce number used for recursive depth
+ * @param bounce nonnegative integer used for recursive depth
  * @param bounceSurface the previous surface we bounced from
  */
 function trace(ray, bounce, bounceSurface) {
