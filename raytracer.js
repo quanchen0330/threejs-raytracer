@@ -1,7 +1,7 @@
 "use strict";
 
 /**
- * RAYTRACER
+ * THREE.js RAYTRACER
  * @author Sam Burdick
  * (Starter code by Tony Mullen)
  */
@@ -171,13 +171,13 @@ function trace(ray, bounce, bounceSurface) {
     transMatrix = new THREE.Matrix4().identity();
     if(surface.transforms != undefined) {
       var intersectRay = {
-        origin : ray.origin.clone(),
-        direction: ray.direction.clone()
+        origin    : ray.origin.clone(),
+        direction : ray.direction.clone()
       };
       transMatrix = surface.transformationMatrix.clone();
       transMatrix = transMatrix.getInverse(transMatrix);
       // origin = M^-1 * origin, same for direction
-      // TODO: transformed shape looks ok, but light is not being computed properly
+      // TODO: transformed shape looks ok, but light is incorrect
       intersectRay.origin.applyMatrix4(transMatrix);
       intersectRay.direction.applyMatrix4(transMatrix);
       t = surface.intersects(intersectRay);
@@ -185,54 +185,52 @@ function trace(ray, bounce, bounceSurface) {
       t = surface.intersects(ray);
     }
 
-    if(t && frontmostColor.t > t && surface != bounceSurface ) {
-      // diffuse component
-      if(t < 0)t= Math.abs(t)
-      if(bounce > 0) t = Math.abs(t); // needed for raytracing component for mysterious reasons
-      var dir = ray.direction.clone().multiplyScalar(t) //TODO: may need to normalize this before multiplying? (experiment!)
+    if (t && frontmostColor.t > t && surface != bounceSurface ) {
+      if (bounce > 0) t = Math.abs(t); // necessary hack for making reflections work correctly
+      var dir = ray.direction.clone().multiplyScalar(t);
       var approachVec = new THREE.Vector3().addVectors(ray.origin, dir );
 
       // N = normal Vector
-      if(surface instanceof Sphere) {
-          N = (new THREE.Vector3()).subVectors(approachVec.clone(), surface.center.clone());
-          transMatrix.transpose()
-          N.applyMatrix4(transMatrix).normalize()
+      if (surface instanceof Sphere) {
+          N = new THREE.Vector3().subVectors(approachVec, surface.center);
+          transMatrix.transpose();
+          // N = (M^-1)^T N
+          N.applyMatrix4(transMatrix).normalize();
       } else if (surface instanceof Triangle) {
           N = surface.normal;
       }
+      if(DEBUG){
+        // console.log(t)
+        console.log(N)
+      }
 
       // if surface is reflective we return the bounce result
-      if(surface.mat.kr != undefined && surface.mat.kr[0] != 0 && surface.mat.kr[1] != 0
+      if (surface.mat.kr != undefined && surface.mat.kr[0] != 0 && surface.mat.kr[1] != 0
         && surface.mat.kr[2] != 0 && bounce < scene.bounce_depth) {
         var v = dir.clone().normalize().multiplyScalar(-1);
         var nv = N.dot(v) * 2;
         var ref = (new THREE.Vector3()).subVectors( N.clone().multiplyScalar(nv) , v ).normalize();
-
         var ray = {
           "origin"    : approachVec.clone(),
           "direction" : ref.clone()
         };
-
-        var rec =  trace(ray, bounce + 1, surface);
-
-        if(DEBUG) console.log(rec)
+        var rec = trace(ray, bounce + 1, surface);
         for(var i = 0; i < rec.length; i++) {
           rec[i] *= surface.mat.kr[i];
         }
-
         return rec;
-
       }
-
       // compute light vector
       if(pointLight != undefined) {
         var pointlightVector = new THREE.Vector3(pointLight.position[0], pointLight.position[1], pointLight.position[2])
+        transMatrix.transpose()
         L = (new THREE.Vector3()).subVectors( pointlightVector, approachVec);
       } else if (directionalLight != undefined) {
         var directionalLightVector = new THREE.Vector3(directionalLight.direction[0], directionalLight.direction[1], directionalLight.direction[2])
         L = directionalLightVector.multiplyScalar(-1);
-
       }
+      // transMatrix.transpose()
+      // L.applyMatrix4(transMatrix)
 
       var Lclone = L.clone()
       // specular / diffuse component
@@ -257,9 +255,11 @@ function trace(ray, bounce, bounceSurface) {
       var shadeAmount = 1;
       for(var i = 0; i < surfaces.length; i++) {
         if(softShadows) {
-          // "jitter" point-to-light vectors: take random perturbations of the light vector: see how many of those intersect. num intersections
-          // will determine the darkness of the shadow. We will do this by L = z_1*a + z_2*b where a and b are orthogonal normal vectors, 0 <= z_i < 1 are random.
-          // intensity of the light will be determined by by how many of these vectors intersect a shape.
+          /*
+              "jitter" point-to-light vectors: take random perturbations of the light vector: see how many of those intersect. num intersections
+              will determine the darkness of the shadow. We will do this by L = z_1*a + z_2*b where a and b are perpendicular vectors, 0 <= z_i < 1 are random.
+              The intensity of the light will be determined by by how many of these vectors intersect a shape.
+          */
           var sampleSize = 10;
           for(var j = 0; j < sampleSize; j++) {
             var sampleVec = {
@@ -282,9 +282,12 @@ function trace(ray, bounce, bounceSurface) {
       var ka = surface.mat.ka;
       var ks = surface.mat.ks;
       var amb = ambientLight.color;
-      ambComp = [ ka[0] * amb[0], ka[1] * amb[1], ka[2] *  amb[2] ];
+  //    ambComp = [ ka[0] * amb[0], ka[1] * amb[1], ka[2] *  amb[2] ];
+      ambComp = [0,0,0];
       specComp = [ ks[0] * S, ks[1] * S, ks[2] * S ];
+  //    specComp = [0,0,0];
       diffComp = [ kd[0] * D, kd[1] * D, kd[2] * D ];
+  //    diffComp = [0,0,0];
       var finalColor = [];
       for(var i = 0; i < 3; i++) {
         var finalComp = 0;
@@ -293,7 +296,7 @@ function trace(ray, bounce, bounceSurface) {
         if(diffComp[i] > EPSILON) finalComp += diffComp[i];
         finalColor.push(finalComp);
       }
-      if(shaded && Lclone.length() > 1.30) { // TODO: PATCH: couple of spots on the ceiling from lighting. this circumvents it for the time being,
+      if(shaded && Lclone.length() > 1.30) { // NB: necessary hack clears a couple of spots on the ceiling from lighting. this circumvents it for the time being,
         for(var i = 0; i < finalColor.length; i++) {
           finalColor[i] *= shadeAmount;
         }
@@ -317,12 +320,12 @@ var Surface = function(mat, objname, transforms){
   this.rotateZ = new THREE.Matrix4().identity();
   this.scale = new THREE.Matrix4().identity();
   if(this.transforms != null) {
-    for(var i = 0; i < this.transforms.length; i++) {
-      var transform = this.transforms[i];
+    for(var transIndex = 0; transIndex < this.transforms.length; transIndex++) {
+      var transform = this.transforms[transIndex];
       var name = transform[0];
       var transVector = transform[1];
       if(name === "Translate") {
-        this.translate.makeTranslation(transVector[0], transVector[1], transVector[2]).multiplyScalar(0.45);
+        this.translate.makeTranslation(transVector[0], transVector[1], transVector[2]);
       } else if (name === "Rotate") {
         this.rotateX.makeRotationX(rad(transVector[0]));
         this.rotateY.makeRotationY(rad(transVector[1]));
@@ -331,12 +334,14 @@ var Surface = function(mat, objname, transforms){
         this.scale.makeScale(transVector[0], transVector[1], transVector[2]);
       }
     }
-    this.transformationMatrix
-      .multiply(this.translate)
-      .multiply(this.rotateX)
-      .multiply(this.rotateY)
-      .multiply(this.rotateZ)
-      .multiply(this.scale);
+  //  this.transformationMatrix
+      // .multiply(this.rotateX)
+      // .multiply(this.rotateY)
+      // .multiply(this.rotateZ)
+
+      //   .multiply(this.translate)
+      // .multiply(this.scale)
+      // .multiplyScalar(0.5);
   }
 };
 
